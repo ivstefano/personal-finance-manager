@@ -1,0 +1,172 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String?
+  password      String
+  emailVerified DateTime?
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  accounts      Account[]
+  transactions  Transaction[]
+  budgets       Budget[]
+  goals         Goal[]
+  bills         Bill[]
+  categories    Category[]
+  sessions      Session[]
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Account {
+  id                String   @id @default(cuid())
+  userId            String
+  type              String   // bank, credit_card, investment, cash
+  provider          String?  // plaid, manual
+  providerAccountId String?
+  accountName       String
+  accountNumber     String?
+  balance           Float    @default(0)
+  currency          String   @default("USD")
+  isActive          Boolean  @default(true)
+  lastSynced        DateTime?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions Transaction[]
+
+  @@unique([provider, providerAccountId])
+}
+
+model Category {
+  id          String   @id @default(cuid())
+  userId      String
+  name        String
+  icon        String?
+  color       String?
+  type        String   // income, expense
+  parentId    String?
+  isSystem    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parent       Category?     @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  children     Category[]    @relation("CategoryHierarchy")
+  transactions Transaction[]
+  budgetItems  BudgetItem[]
+
+  @@unique([userId, name])
+}
+
+model Transaction {
+  id           String    @id @default(cuid())
+  userId       String
+  accountId    String
+  categoryId   String?
+  amount       Float
+  type         String    // debit, credit
+  description  String
+  merchant     String?
+  date         DateTime
+  pending      Boolean   @default(false)
+  notes        String?
+  receipt      String?   // URL to receipt image
+  tags         String[]
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  account  Account   @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  category Category? @relation(fields: [categoryId], references: [id])
+
+  @@index([userId, date])
+  @@index([accountId])
+  @@index([categoryId])
+}
+
+model Budget {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String
+  month     Int
+  year      Int
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user  User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items BudgetItem[]
+
+  @@unique([userId, month, year])
+}
+
+model BudgetItem {
+  id         String   @id @default(cuid())
+  budgetId   String
+  categoryId String
+  amount     Float
+  spent      Float    @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  budget   Budget   @relation(fields: [budgetId], references: [id], onDelete: Cascade)
+  category Category @relation(fields: [categoryId], references: [id])
+
+  @@unique([budgetId, categoryId])
+}
+
+model Goal {
+  id           String    @id @default(cuid())
+  userId       String
+  name         String
+  description  String?
+  targetAmount Float
+  currentAmount Float     @default(0)
+  targetDate   DateTime?
+  category     String    // emergency, vacation, debt, retirement, custom
+  status       String    @default("active") // active, completed, paused
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Bill {
+  id          String    @id @default(cuid())
+  userId      String
+  name        String
+  amount      Float
+  dueDay      Int       // Day of month (1-31)
+  frequency   String    // monthly, weekly, biweekly, quarterly, annually
+  category    String?
+  isAutomatic Boolean   @default(false)
+  isActive    Boolean   @default(true)
+  lastPaid    DateTime?
+  nextDue     DateTime
+  reminder    Boolean   @default(true)
+  reminderDays Int      @default(3) // Days before due date
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, nextDue])
+}
