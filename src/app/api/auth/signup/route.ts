@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { hash } from 'bcryptjs'
 import { z } from 'zod'
-import { prisma } from '@/lib/db'
+import { AuthService } from '@/lib/auth/adapter'
 
 const signupSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
@@ -21,9 +21,7 @@ export async function POST(request: NextRequest) {
     const { name, email, password } = signupSchema.parse(body)
 
     // Check if user already exists
-    const existingUser = await prisma.user.findUnique({
-      where: { email },
-    })
+    const existingUser = await AuthService.getUserByEmail(email)
 
     if (existingUser) {
       return NextResponse.json(
@@ -36,12 +34,10 @@ export async function POST(request: NextRequest) {
     const hashedPassword = await hash(password, 12)
 
     // Create user
-    const user = await prisma.user.create({
-      data: {
-        name,
-        email,
-        password: hashedPassword,
-      },
+    const user = await AuthService.createUser({
+      name,
+      email,
+      password: hashedPassword,
     })
 
     // Return success response (don't include password)
