@@ -48,14 +48,24 @@ export class TransactionService {
 
     // Update account balance
     if (transaction.accountId && !transaction.pending) {
-      const balanceChange = transaction.type === 'expense' ? -transaction.amount : transaction.amount
-      await db
-        .update(accounts)
-        .set({
-          balance: accounts.balance + balanceChange,
-          lastSynced: new Date()
-        })
+      // First get the current account balance
+      const [currentAccount] = await db
+        .select({ balance: accounts.balance })
+        .from(accounts)
         .where(and(eq(accounts.id, transaction.accountId), eq(accounts.userId, transaction.userId)))
+
+      if (currentAccount) {
+        const balanceChange = transaction.type === 'expense' ? -transaction.amount : transaction.amount
+        const newBalance = currentAccount.balance + balanceChange
+
+        await db
+          .update(accounts)
+          .set({
+            balance: newBalance,
+            lastSynced: new Date()
+          })
+          .where(and(eq(accounts.id, transaction.accountId), eq(accounts.userId, transaction.userId)))
+      }
     }
 
     return transaction
@@ -82,13 +92,23 @@ export class TransactionService {
       const netChange = newBalanceChange - oldBalanceChange
 
       if (netChange !== 0) {
-        await db
-          .update(accounts)
-          .set({
-            balance: accounts.balance + netChange,
-            lastSynced: new Date()
-          })
+        // First get the current account balance
+        const [currentAccount] = await db
+          .select({ balance: accounts.balance })
+          .from(accounts)
           .where(and(eq(accounts.id, transaction.accountId), eq(accounts.userId, transaction.userId)))
+
+        if (currentAccount) {
+          const newBalance = currentAccount.balance + netChange
+
+          await db
+            .update(accounts)
+            .set({
+              balance: newBalance,
+              lastSynced: new Date()
+            })
+            .where(and(eq(accounts.id, transaction.accountId), eq(accounts.userId, transaction.userId)))
+        }
       }
     }
 
@@ -106,14 +126,24 @@ export class TransactionService {
 
     // Reverse the account balance change
     if (deletedTransaction && deletedTransaction.accountId && !deletedTransaction.pending) {
-      const balanceReversal = deletedTransaction.type === 'expense' ? deletedTransaction.amount : -deletedTransaction.amount
-      await db
-        .update(accounts)
-        .set({
-          balance: accounts.balance + balanceReversal,
-          lastSynced: new Date()
-        })
+      // First get the current account balance
+      const [currentAccount] = await db
+        .select({ balance: accounts.balance })
+        .from(accounts)
         .where(and(eq(accounts.id, deletedTransaction.accountId), eq(accounts.userId, deletedTransaction.userId)))
+
+      if (currentAccount) {
+        const balanceReversal = deletedTransaction.type === 'expense' ? deletedTransaction.amount : -deletedTransaction.amount
+        const newBalance = currentAccount.balance + balanceReversal
+
+        await db
+          .update(accounts)
+          .set({
+            balance: newBalance,
+            lastSynced: new Date()
+          })
+          .where(and(eq(accounts.id, deletedTransaction.accountId), eq(accounts.userId, deletedTransaction.userId)))
+      }
     }
 
     return !!deletedTransaction
