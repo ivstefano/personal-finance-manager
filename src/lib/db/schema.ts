@@ -76,6 +76,7 @@ export const categories = sqliteTable('categories', {
   type: text('type').notNull(), // income, expense
   parentId: text('parent_id').references(() => categories.id),
   isSystem: integer('is_system', { mode: 'boolean' }).default(false).notNull(),
+  isActive: integer('is_active', { mode: 'boolean' }).default(true).notNull(),
   createdAt: integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date()),
   updatedAt: integer('updated_at', { mode: 'timestamp' }).$onUpdateFn(() => new Date()),
 })

@@ -8,6 +8,13 @@
       "when": 1757762059868,
       "tag": "0000_uneven_xorn",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1757768821052,
+      "tag": "0001_chief_fixer",
+      "breakpoints": true
     }
   ]
 }
